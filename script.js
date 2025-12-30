@@ -13,6 +13,58 @@
   const ROWS = 20;
   const BLOCK = 30; // 300x600
 
+  // Sistema de sonido usando Web Audio API
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  
+  function playSound(frequency, duration, type = 'sine', volume = 0.15) {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    gainNode.gain.value = volume;
+    
+    oscillator.start(audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    oscillator.stop(audioContext.currentTime + duration);
+  }
+
+  function playSoundMove() {
+    playSound(300, 0.05, 'square', 0.08);
+  }
+
+  function playSoundRotate() {
+    playSound(400, 0.06, 'sine', 0.1);
+  }
+
+  function playSoundDrop() {
+    playSound(200, 0.08, 'triangle', 0.12);
+  }
+
+  function playSoundLineClear(count) {
+    const frequencies = [523, 659, 784, 1047];
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        playSound(frequencies[i % frequencies.length], 0.15, 'sine', 0.15);
+      }, i * 50);
+    }
+  }
+
+  function playSoundGameOver() {
+    setTimeout(() => playSound(440, 0.2, 'sawtooth', 0.15), 0);
+    setTimeout(() => playSound(349, 0.2, 'sawtooth', 0.15), 100);
+    setTimeout(() => playSound(262, 0.4, 'sawtooth', 0.15), 200);
+  }
+
+  function playSoundLevelUp() {
+    setTimeout(() => playSound(523, 0.1, 'sine', 0.12), 0);
+    setTimeout(() => playSound(659, 0.1, 'sine', 0.12), 100);
+    setTimeout(() => playSound(784, 0.15, 'sine', 0.12), 200);
+  }
+
   const COLORS = {
     I: "#22c55e",
     O: "#f59e0b",
@@ -82,19 +134,50 @@
   }
 
   function drawCell(x, y, color) {
-    ctx.fillStyle = color;
+    // Gradiente para dar profundidad
+    const gradient = ctx.createLinearGradient(
+      x * BLOCK, 
+      y * BLOCK, 
+      x * BLOCK + BLOCK, 
+      y * BLOCK + BLOCK
+    );
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, shadeColor(color, -20));
+    
+    ctx.fillStyle = gradient;
     ctx.fillRect(x * BLOCK, y * BLOCK, BLOCK, BLOCK);
 
-    ctx.strokeStyle = "rgba(255,255,255,0.10)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x * BLOCK + 0.5, y * BLOCK + 0.5, BLOCK - 1, BLOCK - 1);
+    // Brillo superior
+    ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.fillRect(x * BLOCK + 2, y * BLOCK + 2, BLOCK - 4, BLOCK / 3);
+
+    // Sombra inferior
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+    ctx.fillRect(x * BLOCK + 2, y * BLOCK + BLOCK - BLOCK / 3 - 2, BLOCK - 4, BLOCK / 3);
+
+    // Borde
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x * BLOCK + 1, y * BLOCK + 1, BLOCK - 2, BLOCK - 2);
+  }
+
+  function shadeColor(color, percent) {
+    const num = parseInt(color.slice(1), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+      (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+      (B < 255 ? B < 1 ? 0 : B : 255))
+      .toString(16).slice(1);
   }
 
   function drawBoard(board) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // grid background lines (very subtle)
-    ctx.strokeStyle = "rgba(255,255,255,0.04)";
+    // grid background lines (more visible)
+    ctx.strokeStyle = "rgba(96, 165, 250, 0.1)";
     ctx.lineWidth = 1;
     for (let x = 0; x <= COLS; x++) {
       ctx.beginPath();
@@ -244,16 +327,22 @@
 
   function lockAndSpawn() {
     merge(board, current);
+    playSoundDrop();
 
     const cleared = clearLines(board);
     if (cleared > 0) {
+      playSoundLineClear(cleared);
       // Puntaje simple por líneas; con bonus por múltiple
       // 1:100, 2:300, 3:500, 4:800 (estilo clásico)
       const table = { 1: 100, 2: 300, 3: 500, 4: 800 };
       score += (table[cleared] ?? cleared * 100) * level;
       lines += cleared;
 
-      level = Math.floor(lines / 10) + 1;
+      const newLevel = Math.floor(lines / 10) + 1;
+      if (newLevel > level) {
+        playSoundLevelUp();
+        level = newLevel;
+      }
     }
 
     current = next;
@@ -262,6 +351,7 @@
     // game over check
     if (collides(board, current, 0, 0)) {
       gameOver = true;
+      playSoundGameOver();
     }
 
     updateUI();
@@ -289,6 +379,7 @@
   function move(dx) {
     if (!collides(board, current, dx, 0)) {
       current.x += dx;
+      playSoundMove();
     }
   }
 
@@ -301,6 +392,7 @@
       if (!collides(board, current, k, 0, rotated)) {
         current.matrix = rotated;
         current.x += k;
+        playSoundRotate();
         return;
       }
     }
