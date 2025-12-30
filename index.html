@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris (simple)</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <h1 class="title">Tetris</h1>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">Puntos</div>
+            <div id="score" class="value">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">Líneas</div>
+            <div id="lines" class="value">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">Nivel</div>
+            <div id="level" class="value">1</div>
+          </div>
+        </div>
+
+        <div class="help">
+          <div class="help-title">Controles</div>
+          <ul>
+            <li>← / →: mover</li>
+            <li>↓: bajar rápido</li>
+            <li>↑: rotar</li>
+            <li>Espacio: caída instantánea</li>
+            <li>P: pausar</li>
+            <li>R: reiniciar</li>
+          </ul>
+        </div>
+
+        <div id="status" class="status" aria-live="polite"></div>
+      </section>
+
+      <section class="game">
+        <canvas id="board" width="300" height="600" aria-label="Tablero Tetris"></canvas>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
